@@ -27,9 +27,12 @@ def crear_modal(page):
                     ],
                     hint_text="Seleccionar frecuencia",
                     bgcolor="white",
+                    item_height=30
                 ),
             ],
-            spacing=20  # Aumenta el espaciado entre filas
+            spacing=20,# Aumenta el espaciado entre filas
+            width=250,
+            height= 400
         ),
         actions=[
             ft.TextButton("Cancelar", on_click=cerrar_modal, style=ft.ButtonStyle(bgcolor="#E9ECEF", color="black")),
