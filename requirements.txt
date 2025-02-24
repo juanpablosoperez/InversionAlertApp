@@ -1,0 +1,7 @@
+requests
+beautifulsoup4
+pandas
+openpyxl
+flet         # o streamlit, dependiendo de tu elección
+yagmail      # opcional, para envío de email
+streamlit
