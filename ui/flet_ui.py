@@ -17,8 +17,10 @@ def main(page: ft.Page):
             [
                 ft.Text("Ticker"),
                 ft.TextField(hint_text="Ej: AAPL", bgcolor="white"),
+                ft.Container(height=15),  # Espacio adicional
                 ft.Text("Precio Objetivo"),
                 ft.TextField(hint_text="0.00", bgcolor="white"),
+                ft.Container(height=15),  # Espacio adicional
                 ft.Text("Frecuencia de Revisión"),
                 ft.Dropdown(
                     options=[
@@ -31,10 +33,11 @@ def main(page: ft.Page):
                 ),
             ],
             tight=True,
+            spacing=20  # Aumenta el espacio entre filas
         ),
         actions=[
-            ft.TextButton("Cancelar", on_click=close_modal),
-            ft.TextButton("Agregar", on_click=close_modal),
+            ft.TextButton("Cancelar", on_click=close_modal, style=ft.ButtonStyle(bgcolor="#E9ECEF", color="black")),
+            ft.TextButton("Agregar", on_click=close_modal, style=ft.ButtonStyle(bgcolor="#34A853", color="white")),
         ],
     )
 
@@ -98,38 +101,37 @@ def main(page: ft.Page):
                         ft.Text(inv["ticker"], size=16, weight="bold"),
                         ft.Text(inv["pct"], color=inv["color"]),
                     ]),
+                    ft.Container(height=10),  # Espacio adicional entre elementos
                     ft.Text(f"Precio actual: {inv['precio_actual']}", size=14),
                     ft.Text(f"Precio objetivo: {inv['precio_objetivo']}", size=14),
                     ft.Text(f"Distancia al objetivo: {inv['distancia']}", size=14, color=inv["color"]),
                     ft.Text(f"Última actualización: {inv['ultima_actualizacion']}", size=12, color="gray"),
+                    ft.Container(height=10),  # Espacio antes del botón
                     ft.ElevatedButton("Ver detalles", bgcolor="#34A853", color="white"),
                 ],
                 tight=True,
+                spacing=15  # Aumenta el espaciado dentro de cada tarjeta
             ),
             padding=20,
             border_radius=12,
             bgcolor="white",
             shadow=ft.BoxShadow(blur_radius=10, color="#0000001A"),
+            width=350,  # Ajustar tamaño de cada tarjeta
         )
         tarjetas.append(tarjeta)
 
-    # Contenedor de tarjetas en una fila sin salto de línea
+    # Contenedor de tarjetas en una fila con alineación y espaciado adecuado
     tarjetas_container = ft.Row(
         tarjetas,
         alignment=ft.MainAxisAlignment.CENTER,
-        spacing=20,  # Espacio entre tarjetas
+        spacing=30,  # Espaciado entre tarjetas
     )
 
-    # Estructura principal de la página
+    # Agregar los componentes a la página
     page.add(
         ft.Column(
-            [
-                header,
-                search_bar,
-                tarjetas_container  # Ahora las tarjetas están en una sola fila
-            ],
-            spacing=20,
-            alignment=ft.MainAxisAlignment.CENTER,
+            [header, ft.Container(content=search_bar, padding=10), ft.Container(content=tarjetas_container, padding=20)],
+            spacing=20
         )
     )
 
