@@ -1,4 +1,5 @@
 import flet as ft
+import pandas as pd
 
 def crear_modal(page, agregar_inversion):
     """Crea y retorna el modal para agregar una inversión."""
@@ -91,7 +92,7 @@ def crear_tarjetas(page):
                         ft.Container(height=10),
                         ft.Row([
                             ft.ElevatedButton("Ver detalles", bgcolor="#34A853", color="white"),
-                            ft.IconButton(icon=ft.icons.DELETE, tooltip="Eliminar", on_click=lambda e, inv=inv: eliminar_inversion(inv)),
+                            ft.IconButton(icon=ft.Icons.DELETE, tooltip="Eliminar", on_click=lambda e, inv=inv: eliminar_inversion(inv)),
                         ]),
                     ],
                     tight=True,
@@ -138,8 +139,34 @@ def crear_tarjetas(page):
         actualizar_tarjetas()
 
     actualizar_tarjetas()
-    return tarjetas_container, agregar_inversion
+    #return tarjetas_container, agregar_inversion
+     # Contenedor con scroll vertical
+    return ft.Container(
+        content=ft.Column([tarjetas_container], scroll=ft.ScrollMode.ALWAYS, height=800)
+    ), agregar_inversion
 
+def exportar_excel(page):
+    """Exporta las inversiones a un archivo Excel."""
+    inversiones = page.client_storage.get("inversiones")
+
+    if not inversiones:
+        page.snack_bar = ft.SnackBar(
+            content=ft.Text("No hay inversiones para exportar."),
+            bgcolor="#ff4d4d"
+        )
+        page.snack_bar.open = True
+        page.update()
+        return
+
+    df = pd.DataFrame(inversiones)
+    df.to_excel("inversiones.xlsx", index=False)
+
+    page.snack_bar = ft.SnackBar(
+        content=ft.Text("Inversiones exportadas a Excel."),
+        bgcolor="#34A853"
+    )
+    page.snack_bar.open = True
+    page.update()
 
 def main(page: ft.Page):
     """Función principal que gestiona la página."""
@@ -165,16 +192,28 @@ def main(page: ft.Page):
                             ft.Text("3 inversiones monitoreadas", size=14, color="black"),
                             ft.Text(" • 0 alcanzaron objetivo", size=14, color="black"),
                         ], alignment=ft.MainAxisAlignment.CENTER),
-                        ft.ElevatedButton(
-                            "+ Agregar Inversión",
-                            bgcolor="#34A853",
-                            color="white",
-                            on_click=abrir_modal,  # ✅ Ahora pasa la función correctamente
-                            style=ft.ButtonStyle(
-                                shape=ft.RoundedRectangleBorder(radius=8),
-                                padding=10,
+                        ft.Row([
+                            ft.ElevatedButton(
+                                "+ Agregar Inversión",
+                                bgcolor="#34A853",
+                                color="white",
+                                on_click=abrir_modal,
+                                style=ft.ButtonStyle(
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    padding=10,
+                                ),
                             ),
-                        ),
+                            ft.ElevatedButton(
+                                "Exportar a Excel",
+                                bgcolor="#007BFF",
+                                color="white",
+                                on_click=lambda e: exportar_excel(page),
+                                style=ft.ButtonStyle(
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    padding=10,
+                                ),
+                            )
+                        ]),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
@@ -189,7 +228,7 @@ def main(page: ft.Page):
                         hint_text="Ordenar por",
                     ),
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN), padding=10),
-                ft.Container(content=tarjetas_container, padding=20),
+                tarjetas_container,
             ],
             spacing=20
         )
