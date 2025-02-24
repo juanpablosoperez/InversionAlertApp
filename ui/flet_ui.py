@@ -1,12 +1,9 @@
 import flet as ft
 
-def main(page: ft.Page):
-    page.title = "Inversion Alert"
-    page.bgcolor = "#FFFFFF"
-    page.theme_mode = "light"
+def crear_modal(page):
+    """Crea y retorna el modal para agregar una inversión."""
     
-    # Estado para el modal
-    def close_modal(e):
+    def cerrar_modal(e):
         modal.open = False
         page.update()
 
@@ -32,22 +29,27 @@ def main(page: ft.Page):
                     bgcolor="white",
                 ),
             ],
-            tight=True,
-            spacing=20  # Aumenta el espacio entre filas
+            spacing=20  # Aumenta el espaciado entre filas
         ),
         actions=[
-            ft.TextButton("Cancelar", on_click=close_modal, style=ft.ButtonStyle(bgcolor="#E9ECEF", color="black")),
-            ft.TextButton("Agregar", on_click=close_modal, style=ft.ButtonStyle(bgcolor="#34A853", color="white")),
+            ft.TextButton("Cancelar", on_click=cerrar_modal, style=ft.ButtonStyle(bgcolor="#E9ECEF", color="black")),
+            ft.TextButton("Agregar", on_click=cerrar_modal, style=ft.ButtonStyle(bgcolor="#34A853", color="white")),
         ],
     )
 
-    def open_modal(e):
-        page.dialog = modal
-        modal.open = True
+    # Agregamos el modal a `page.overlay` para que siempre esté disponible
+    page.overlay.append(modal)
+    return modal
+
+def crear_encabezado(page, modal):
+    """Crea y retorna el encabezado con métricas y botón para agregar inversión."""
+
+    def abrir_modal(e):
+        """Función para abrir el modal al hacer clic en el botón."""
+        modal.open = True  # Ahora el modal se activa desde `page.overlay`
         page.update()
 
-    # Encabezado con métricas y botón de agregar inversión
-    header = ft.Row(
+    return ft.Row(
         [
             ft.Text("Inversion Alert", size=24, weight="bold"),
             ft.Row([
@@ -58,7 +60,7 @@ def main(page: ft.Page):
                 "+ Agregar Inversión",
                 bgcolor="#34A853",
                 color="white",
-                on_click=open_modal,
+                on_click=abrir_modal,  # ✅ Ahora pasa la función correctamente
                 style=ft.ButtonStyle(
                     shape=ft.RoundedRectangleBorder(radius=8),
                     padding=10,
@@ -68,8 +70,9 @@ def main(page: ft.Page):
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
     )
 
-    # Barra de búsqueda y filtros
-    search_bar = ft.Row(
+def crear_barra_busqueda():
+    """Crea y retorna la barra de búsqueda y filtros."""
+    return ft.Row(
         [
             ft.TextField(hint_text="Buscar por ticker...", expand=True),
             ft.Dropdown(
@@ -84,14 +87,14 @@ def main(page: ft.Page):
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
     )
 
-    # Datos de inversiones
+def crear_tarjetas():
+    """Crea y retorna las tarjetas de inversiones en una fila."""
     inversiones = [
         {"ticker": "AAPL", "pct": "1.23%", "color": "#34A853", "precio_actual": "$185.92", "precio_objetivo": "$200", "distancia": "-7.04%", "ultima_actualizacion": "Hace 1 min"},
         {"ticker": "GOOGL", "pct": "0.78%", "color": "#34A853", "precio_actual": "$142.89", "precio_objetivo": "$150", "distancia": "-4.74%", "ultima_actualizacion": "Hace 12 min"},
         {"ticker": "MELI", "pct": "-0.45%", "color": "#EA4335", "precio_actual": "$1456.78", "precio_objetivo": "$1500", "distancia": "-2.88%", "ultima_actualizacion": "Hace 3 min"},
     ]
 
-    # Tarjetas de inversiones
     tarjetas = []
     for inv in inversiones:
         tarjeta = ft.Container(
@@ -120,17 +123,24 @@ def main(page: ft.Page):
         )
         tarjetas.append(tarjeta)
 
-    # Contenedor de tarjetas en una fila con alineación y espaciado adecuado
-    tarjetas_container = ft.Row(
-        tarjetas,
-        alignment=ft.MainAxisAlignment.CENTER,
-        spacing=30,  # Espaciado entre tarjetas
-    )
+    return ft.Row(tarjetas, alignment=ft.MainAxisAlignment.CENTER, spacing=30)
 
-    # Agregar los componentes a la página
+def main(page: ft.Page):
+    """Función principal que gestiona la página."""
+    page.title = "Inversion Alert"
+    page.bgcolor = "#FFFFFF"
+    page.theme_mode = "light"
+    
+    modal = crear_modal(page)  # Crear el modal y pasarlo a `page.overlay`
+
+    # Agregar elementos a la página
     page.add(
         ft.Column(
-            [header, ft.Container(content=search_bar, padding=10), ft.Container(content=tarjetas_container, padding=20)],
+            [
+                crear_encabezado(page, modal),
+                ft.Container(content=crear_barra_busqueda(), padding=10),
+                ft.Container(content=crear_tarjetas(), padding=20),
+            ],
             spacing=20
         )
     )
