@@ -12,8 +12,9 @@ def run_app():
     st.markdown("""
         <style>
         /* Ajustes generales */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
         html, body, [class*="st"] {
-            font-family: Arial, sans-serif;
+            font-family: 'Poppins', sans-serif;
             background-color: #FFFFFF;
             color: black;
         }
@@ -23,16 +24,20 @@ def run_app():
             display: flex;
             gap: 2rem;
             align-items: center;
-            font-size: 0.9rem;
+            font-size: 1rem;
             color: black;
             margin-bottom: 1rem;
         }
         .metric-box {
             text-align: center;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 600;
         }
         .metric-value {
-            font-size: 1.2rem;
-            font-weight: 600;
+            font-size: 1.5rem;
+            font-weight: 700;
             color: black;
         }
         
@@ -48,7 +53,7 @@ def run_app():
         }
         .card h3 {
             margin: 0;
-            font-size: 1.2rem;
+            font-size: 1.4rem;
             font-weight: 600;
         }
         .badge {
@@ -68,22 +73,36 @@ def run_app():
             color: #EA4335;
         }
         .price {
-            font-size: 1.5rem;
+            font-size: 1.7rem;
             font-weight: 700;
             margin: 0.5rem 0;
         }
         .details-btn {
-            font-size: 0.9rem;
-            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            padding: 0.6rem 1.2rem;
             background-color: #34A853;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             text-decoration: none;
+            font-weight: 600;
         }
         .details-btn:hover {
             background-color: #2C7A45;
+        }
+        .add-investment-btn {
+            background-color: #0D6EFD;
+            color: white;
+            padding: 0.6rem 1.5rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .add-investment-btn:hover {
+            background-color: #0B5ED7;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -98,7 +117,7 @@ def run_app():
                     "<div class='metric-box'><p>Alcanzaron objetivo</p><p class='metric-value'>0</p></div>" +
                     "</div>", unsafe_allow_html=True)
     with col3:
-        st.button("+ Agregar Inversión")
+        st.markdown("<button class='add-investment-btn'>+ Agregar Inversión</button>", unsafe_allow_html=True)
     
     # --- Barra de búsqueda y filtros ---
     col_search, col_sort = st.columns([3, 1])
