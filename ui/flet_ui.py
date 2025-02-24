@@ -116,26 +116,30 @@ def crear_modal(page, agregar_inversion):
     return modal
 
 def crear_tarjetas(page):
-    """Crea y retorna un contenedor dinámico de tarjetas de inversiones."""
+    """Crea y retorna un contenedor dinámico de tarjetas de inversiones con funcionalidad de búsqueda."""
 
     if not page.client_storage.contains_key("inversiones"):
         page.client_storage.set("inversiones", [])
 
     tarjetas_container = ft.ResponsiveRow()
+    search_input = ft.TextField(hint_text="Buscar por ticker...", expand=True, on_change=lambda e: actualizar_tarjetas(e.control.value))
 
-    def actualizar_tarjetas():
-        """Función para actualizar la visualización de las inversiones."""
+    def actualizar_tarjetas(filtro=""):
+        """Actualiza la visualización de las inversiones filtrando por ticker."""
         tarjetas_container.controls.clear()
         inversiones = page.client_storage.get("inversiones")
 
-        for inv in inversiones:
+        # Aplicar filtro si hay texto ingresado
+        inversiones_filtradas = [
+            inv for inv in inversiones if filtro.lower() in inv["ticker"].lower()
+        ]
+
+        for inv in inversiones_filtradas:
             tarjeta = ft.Container(
                 content=ft.Column(
                     [
-                        ft.Row([
-                            ft.Text(inv["ticker"], size=16, weight="bold"),
-                            ft.Text(inv["pct"], color=inv["color"]),
-                        ]),
+                        ft.Row([ft.Text(inv["ticker"], size=16, weight="bold"),
+                                ft.Text(inv["pct"], color=inv["color"])]),
                         ft.Container(height=10),
                         ft.Text(f"Precio actual: {inv['precio_actual']}", size=14),
                         ft.Text(f"Precio objetivo: {inv['precio_objetivo']}", size=14),
@@ -143,8 +147,10 @@ def crear_tarjetas(page):
                         ft.Text(f"Última actualización: {inv['ultima_actualizacion']}", size=12, color="gray"),
                         ft.Container(height=10),
                         ft.Row([
-                            ft.ElevatedButton("Ver detalles", bgcolor="#34A853", color="white", on_click=lambda e, inv=inv: abrir_modal_detalle(page, inv)),
-                            ft.IconButton(icon=ft.Icons.DELETE, tooltip="Eliminar", on_click=lambda e, inv=inv: eliminar_inversion(inv)),
+                            ft.ElevatedButton("Ver detalles", bgcolor="#34A853", color="white",
+                                              on_click=lambda e, inv=inv: abrir_modal_detalle(page, inv)),
+                            ft.IconButton(icon=ft.Icons.DELETE, tooltip="Eliminar",
+                                          on_click=lambda e, inv=inv: eliminar_inversion(inv)),
                         ]),
                     ],
                     tight=True,
@@ -154,14 +160,11 @@ def crear_tarjetas(page):
                 border_radius=12,
                 bgcolor="white",
                 shadow=ft.BoxShadow(blur_radius=10, color="#0000001A"),
-                width=300,  # Tamaño de cada tarjeta
+                width=300,
             )
 
             tarjetas_container.controls.append(
-                ft.Container(
-                    tarjeta,
-                    col={"xs": 12, "sm": 6, "md": 4, "lg": 3}  # ✅ Hasta 4 tarjetas por fila
-                )
+                ft.Container(tarjeta, col={"xs": 12, "sm": 6, "md": 4, "lg": 3})
             )
 
         page.update()
@@ -191,9 +194,10 @@ def crear_tarjetas(page):
         actualizar_tarjetas()
 
     actualizar_tarjetas()
-    return ft.Container(
-        content=ft.Column([tarjetas_container], scroll=ft.ScrollMode.ALWAYS, height=800)
+    return ft.Column(
+        [search_input, ft.Container(content=ft.Column([tarjetas_container], scroll=ft.ScrollMode.ALWAYS, height=800))]
     ), agregar_inversion
+
 
 def exportar_excel(page):
     """Exporta las inversiones a un archivo Excel en la carpeta Documentos y muestra un mensaje de éxito."""
@@ -263,8 +267,6 @@ def main(page: ft.Page):
 
     tarjetas_container, agregar_inversion = crear_tarjetas(page)
     modal = crear_modal(page, agregar_inversion)
-    modal_detalle = crear_modal_detalle(page)
-
 
     # ✅ Función para abrir el modal
     def abrir_modal(e):
@@ -297,7 +299,7 @@ def main(page: ft.Page):
                                 "Exportar a Excel",
                                 bgcolor=ft.Colors.BLUE_600,
                                 color=ft.Colors.WHITE,
-                                on_click=lambda e: exportar_excel(page),  # ✅ Llama a la función correctamente
+                                on_click=lambda e: exportar_excel(page),
                                 style=ft.ButtonStyle(
                                     shape=ft.RoundedRectangleBorder(radius=8),
                                     padding=10,
@@ -307,18 +309,7 @@ def main(page: ft.Page):
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
-                ft.Container(content=ft.Row([
-                    ft.TextField(hint_text="Buscar por ticker...", expand=True),
-                    ft.Dropdown(
-                        options=[
-                            ft.dropdown.Option("Ticker [A->Z]"),
-                            ft.dropdown.Option("Precio Actual"),
-                            ft.dropdown.Option("Precio Objetivo"),
-                        ],
-                        hint_text="Ordenar por",
-                    ),
-                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN), padding=10),
-                tarjetas_container,
+                tarjetas_container,  # ✅ Ya incluye el buscador
             ],
             spacing=20
         )
