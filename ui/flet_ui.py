@@ -1,5 +1,7 @@
 import flet as ft
 import pandas as pd
+from pathlib import Path
+import datetime
 
 def crear_modal(page, agregar_inversion):
     """Crea y retorna el modal para agregar una inversión."""
@@ -139,49 +141,85 @@ def crear_tarjetas(page):
         actualizar_tarjetas()
 
     actualizar_tarjetas()
-    #return tarjetas_container, agregar_inversion
-     # Contenedor con scroll vertical
     return ft.Container(
         content=ft.Column([tarjetas_container], scroll=ft.ScrollMode.ALWAYS, height=800)
     ), agregar_inversion
 
 def exportar_excel(page):
-    """Exporta las inversiones a un archivo Excel."""
-    inversiones = page.client_storage.get("inversiones")
+    """Exporta las inversiones a un archivo Excel en la carpeta Documentos y muestra un mensaje de éxito."""
+
+    # ✅ Obtener las inversiones almacenadas en memoria
+    inversiones = page.client_storage.get("inversiones") or []  # Si no hay datos, devuelve una lista vacía
 
     if not inversiones:
         page.snack_bar = ft.SnackBar(
             content=ft.Text("No hay inversiones para exportar."),
-            bgcolor="#ff4d4d"
+            bgcolor=ft.Colors.RED_400
         )
         page.snack_bar.open = True
         page.update()
         return
 
-    df = pd.DataFrame(inversiones)
-    df.to_excel("inversiones.xlsx", index=False)
+    # ✅ Ruta de exportación
+    documentos_path = Path.home() / "Downloads"
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"inversiones_{timestamp}.xlsx"
+    filepath = documentos_path / filename
 
-    page.snack_bar = ft.SnackBar(
-        content=ft.Text("Inversiones exportadas a Excel."),
-        bgcolor="#34A853"
+    # ✅ Crear DataFrame con las inversiones
+    df = pd.DataFrame(inversiones, columns=["ticker", "precio_actual", "precio_objetivo", "distancia", "ultima_actualizacion"])
+    df.to_excel(filepath, index=False)
+
+    def cerrar_popup(e):
+        popup_exportacion.open = False
+        page.update()
+
+    # ✅ Popup de confirmación
+    popup_exportacion = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("Exportación Exitosa", size=20),
+        content=ft.Column([
+            ft.Text("El archivo se ha guardado en:"),
+            ft.Container(
+                content=ft.Text(
+                    str(filepath),
+                    color=ft.Colors.BLUE_400,
+                    weight=ft.FontWeight.BOLD,
+                    selectable=True
+                ),
+                padding=10,
+                bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+                border_radius=5
+            ),
+            ft.Text("Revisa tu carpeta de Documentos."),
+        ], tight=True),
+        actions=[
+            ft.TextButton("Aceptar", on_click=cerrar_popup),
+        ],
     )
-    page.snack_bar.open = True
+
+    # ✅ Agregar el popup a `page.overlay` y mostrarlo
+    page.overlay.append(popup_exportacion)
+    popup_exportacion.open = True
     page.update()
+
+
 
 def main(page: ft.Page):
     """Función principal que gestiona la página."""
     page.title = "Inversion Alert"
-    page.bgcolor = "#FFFFFF"
+    page.bgcolor = ft.Colors.WHITE
     page.theme_mode = "light"
 
     tarjetas_container, agregar_inversion = crear_tarjetas(page)
     modal = crear_modal(page, agregar_inversion)
 
-    # Función para abrir el modal
+    # ✅ Función para abrir el modal
     def abrir_modal(e):
         modal.open = True
         page.update()
 
+    # ✅ UI Principal
     page.add(
         ft.Column(
             [
@@ -189,14 +227,14 @@ def main(page: ft.Page):
                     [
                         ft.Text("Inversion Alert", size=24, weight="bold"),
                         ft.Row([
-                            ft.Text("3 inversiones monitoreadas", size=14, color="black"),
-                            ft.Text(" • 0 alcanzaron objetivo", size=14, color="black"),
+                            ft.Text("3 inversiones monitoreadas", size=14, color=ft.Colors.BLACK),
+                            ft.Text(" • 0 alcanzaron objetivo", size=14, color=ft.Colors.BLACK),
                         ], alignment=ft.MainAxisAlignment.CENTER),
                         ft.Row([
                             ft.ElevatedButton(
                                 "+ Agregar Inversión",
-                                bgcolor="#34A853",
-                                color="white",
+                                bgcolor=ft.Colors.GREEN_600,
+                                color=ft.Colors.WHITE,
                                 on_click=abrir_modal,
                                 style=ft.ButtonStyle(
                                     shape=ft.RoundedRectangleBorder(radius=8),
@@ -205,9 +243,9 @@ def main(page: ft.Page):
                             ),
                             ft.ElevatedButton(
                                 "Exportar a Excel",
-                                bgcolor="#007BFF",
-                                color="white",
-                                on_click=lambda e: exportar_excel(page),
+                                bgcolor=ft.Colors.BLUE_600,
+                                color=ft.Colors.WHITE,
+                                on_click=lambda e: exportar_excel(page),  # ✅ Llama a la función correctamente
                                 style=ft.ButtonStyle(
                                     shape=ft.RoundedRectangleBorder(radius=8),
                                     padding=10,
@@ -235,4 +273,3 @@ def main(page: ft.Page):
     )
 
 ft.app(target=main)
-
