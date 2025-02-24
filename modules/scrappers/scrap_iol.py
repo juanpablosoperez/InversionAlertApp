@@ -68,5 +68,5 @@ if __name__ == "__main__":
     datos = obtener_datos_iol()
     for categoria, valores in datos.items():
         print(f"\n📌 {categoria}: {len(valores)} registros obtenidos")
-        for v in valores[:5]:  # Mostrar solo los primeros 5 por categoría
+        for v in valores[:500]:  # Mostrar solo los primeros 5 por categoría
             print(v)
