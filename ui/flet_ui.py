@@ -3,6 +3,56 @@ import pandas as pd
 from pathlib import Path
 import datetime
 
+def crear_modal_detalle(page):
+    """Crea un modal vacío que se llenará con los datos de la inversión seleccionada."""
+    
+    def cerrar_modal(e):
+        modal.open = False
+        page.update()
+
+    modal = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("Detalles de la Inversión", weight="bold"),
+        content=ft.Column(
+            [
+                ft.Text("Ticker:", weight="bold", size=16),
+                ft.Text("", key="detalle_ticker"),
+                ft.Text("Precio Actual:", weight="bold", size=16),
+                ft.Text("", key="detalle_precio_actual"),
+                ft.Text("Precio Objetivo:", weight="bold", size=16),
+                ft.Text("", key="detalle_precio_objetivo"),
+                ft.Text("Distancia al Objetivo:", weight="bold", size=16),
+                ft.Text("", key="detalle_distancia"),
+                ft.Text("Última Actualización:", weight="bold", size=16),
+                ft.Text("", key="detalle_actualizacion"),
+            ],
+            spacing=10,
+            height= 300,
+            width= 300,
+        ),
+        actions=[ft.TextButton("Cerrar", on_click=cerrar_modal)],
+    )
+
+    page.overlay.append(modal)
+    return modal
+
+def abrir_modal_detalle(page, inversion):
+    """Llena el modal de detalles con los datos de la inversión y lo muestra."""
+    modal = next(m for m in page.overlay if isinstance(m, ft.AlertDialog) and m.title.value == "Detalles de la Inversión")
+
+    # Actualizar los valores dentro del modal
+    modal.content.controls[1].value = inversion["ticker"]
+    modal.content.controls[3].value = inversion["precio_actual"]
+    modal.content.controls[5].value = inversion["precio_objetivo"]
+    modal.content.controls[7].value = inversion["distancia"]
+    modal.content.controls[9].value = inversion["ultima_actualizacion"]
+
+    # Abrir el modal
+    modal.open = True
+    page.update()
+
+
+
 def crear_modal(page, agregar_inversion):
     """Crea y retorna el modal para agregar una inversión."""
 
@@ -93,7 +143,7 @@ def crear_tarjetas(page):
                         ft.Text(f"Última actualización: {inv['ultima_actualizacion']}", size=12, color="gray"),
                         ft.Container(height=10),
                         ft.Row([
-                            ft.ElevatedButton("Ver detalles", bgcolor="#34A853", color="white"),
+                            ft.ElevatedButton("Ver detalles", bgcolor="#34A853", color="white", on_click=lambda e, inv=inv: abrir_modal_detalle(page, inv)),
                             ft.IconButton(icon=ft.Icons.DELETE, tooltip="Eliminar", on_click=lambda e, inv=inv: eliminar_inversion(inv)),
                         ]),
                     ],
@@ -213,6 +263,8 @@ def main(page: ft.Page):
 
     tarjetas_container, agregar_inversion = crear_tarjetas(page)
     modal = crear_modal(page, agregar_inversion)
+    modal_detalle = crear_modal_detalle(page)
+
 
     # ✅ Función para abrir el modal
     def abrir_modal(e):
