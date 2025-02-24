@@ -113,17 +113,11 @@ def main(page: ft.Page):
         )
         tarjetas.append(tarjeta)
 
-    # Contenedor de tarjetas en una fila flexible con fondo blanco
-    tarjetas_container = ft.Container(
-        content=ft.Row(
-            tarjetas,
-            wrap=True,
-            alignment=ft.MainAxisAlignment.CENTER,
-            spacing=20,
-        ),
-        padding=20,
-        bgcolor="white",
-        border_radius=10,
+    # Contenedor de tarjetas en una fila sin salto de línea
+    tarjetas_container = ft.Row(
+        tarjetas,
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=20,  # Espacio entre tarjetas
     )
 
     # Estructura principal de la página
@@ -132,7 +126,7 @@ def main(page: ft.Page):
             [
                 header,
                 search_bar,
-                tarjetas_container
+                tarjetas_container  # Ahora las tarjetas están en una sola fila
             ],
             spacing=20,
             alignment=ft.MainAxisAlignment.CENTER,
