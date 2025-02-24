@@ -1,12 +1,23 @@
 import streamlit as st
 import pandas as pd
 
+
 def run_app():
     # Configuración de la página
     st.set_page_config(
         page_title="Inversion Alert",
         layout="wide"
     )
+
+    # Estado para el modal
+    if 'show_modal' not in st.session_state:
+        st.session_state.show_modal = False
+
+    def open_modal():
+        st.session_state.show_modal = True
+
+    def close_modal():
+        st.session_state.show_modal = False
     
     # --- CSS Personalizado ---
     st.markdown("""
@@ -104,6 +115,89 @@ def run_app():
         .add-investment-btn:hover {
             background-color: #0B5ED7;
         }
+        .modal-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;  /* Asegura que el fondo sea blanco */
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+        }
+        /* Corrección del color de los campos de entrada */
+        input, select {
+            background-color: white !important;
+            color: black !important;
+            border: 1px solid #ccc !important;
+            padding: 8px;
+            width: 100%;
+            border-radius: 5px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        .modal-buttons button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .cancel-btn {
+            background-color: #ccc;
+            color: black;
+        }
+        .add-btn {
+            background-color: #34A853;
+            color: white;
+        }
+                
+        .details-btn, .add-investment-btn {
+            font-size: 1rem;
+            padding: 10px 20px;
+            background-color: #34A853;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+            display: inline-block;
+            text-align: center;
+        }
+        .details-btn:hover, .add-investment-btn:hover {
+            background-color: #2C7A45;
+        }
+        .styled-button {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background-color: #34A853;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+        .styled-button:hover {
+            background-color: #2C7A45;
+        }
+
+       
         </style>
     """, unsafe_allow_html=True)
     
@@ -117,8 +211,21 @@ def run_app():
                     "<div class='metric-box'><p>Alcanzaron objetivo</p><p class='metric-value'>0</p></div>" +
                     "</div>", unsafe_allow_html=True)
     with col3:
-        st.markdown("<button class='add-investment-btn'>+ Agregar Inversión</button>", unsafe_allow_html=True)
-    
+        button = st.button("+ Agregar Inversión", key="open_modal")
+        st.markdown("""
+            <script>
+            var elements = window.parent.document.querySelectorAll('button[data-testid="stButton"]');
+            elements.forEach(el => {
+                el.classList.add('styled-button');
+            });
+            </script>
+        """, unsafe_allow_html=True)
+        if button:
+            open_modal()
+
+
+
+
     # --- Barra de búsqueda y filtros ---
     col_search, col_sort = st.columns([3, 1])
     with col_search:
@@ -147,6 +254,31 @@ def run_app():
                     <button class='details-btn'>Ver detalles</button>
                 </div>
             """, unsafe_allow_html=True)
+
+    # --- Modal para agregar inversión ---
+    if st.session_state.show_modal:
+        st.markdown("""
+            <div class='modal-container'>
+                <div class='modal-content'>
+                    <h3>Agregar Nueva Inversión</h3>
+                    <label>Ticker</label>
+                    <input type='text' placeholder='Ej: AAPL'>
+                    <label>Precio Objetivo</label>
+                    <input type='number' placeholder='0.00'>
+                    <label>Frecuencia de Revisión</label>
+                    <select>
+                        <option>Seleccionar frecuencia</option>
+                        <option>1 min</option>
+                        <option>5 min</option>
+                        <option>15 min</option>
+                    </select>
+                    <div class='modal-buttons'>
+                        <button class='cancel-btn' onclick="window.location.reload();">Cancelar</button>
+                        <button class='add-btn' onclick="window.location.reload();">Agregar</button>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
 def main():
     run_app()
