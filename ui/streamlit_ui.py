@@ -39,9 +39,9 @@ def run_app():
         /* Tarjetas */
         .card {
             background-color: white;
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
             border: 1px solid #E9ECEF;
             text-align: center;
             color: black;
@@ -74,13 +74,16 @@ def run_app():
         }
         .details-btn {
             font-size: 0.9rem;
-            padding: 0.4rem 0.8rem;
-            background-color: #f8f9fa;
-            color: black;
-            border: 1px solid #ced4da;
-            border-radius: 0.25rem;
+            padding: 0.5rem 1rem;
+            background-color: #34A853;
+            color: white;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
             text-decoration: none;
+        }
+        .details-btn:hover {
+            background-color: #2C7A45;
         }
         </style>
     """, unsafe_allow_html=True)
