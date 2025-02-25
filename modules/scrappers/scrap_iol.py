@@ -1,72 +1,74 @@
+# scrap_iol.py
 import requests
 from bs4 import BeautifulSoup
+import re
 
-# URL base
 BASE_URL = "https://iol.invertironline.com"
-
-# Diccionario con los tipos de instrumentos a scrapear
-INSTRUMENTOS = {
-    "Acciones": "/mercado/cotizaciones/argentina/Acciones",
-    "Cedears": "/mercado/cotizaciones/argentina/Cedears"
-}
+ENDPOINTS = [
+    "/mercado/cotizaciones/argentina/Acciones",
+    "/mercado/cotizaciones/argentina/Cedears",
+]
 
 def obtener_datos_iol():
-    """Scrapea Acciones y Cedears en InvertirOnline y devuelve los datos."""
+    """Scrapea Acciones y Cedears de InvertirOnline y devuelve los datos."""
     resultados = {}
 
-    for categoria, path in INSTRUMENTOS.items():
-        url = BASE_URL + path
-        print(f"🔍 Scrapear {categoria}: {url}")
+    for endpoint in ENDPOINTS:
+        url = BASE_URL + endpoint
+        print(f"🔍 Scrapear {url}")
 
-        # Obtener el contenido de la página
         response = requests.get(url)
         if response.status_code != 200:
             print(f"❌ Error al acceder a {url}")
             continue
 
-        # Parsear la página con BeautifulSoup
         soup = BeautifulSoup(response.text, "html.parser")
-
-        # Encontrar la tabla de cotizaciones
         tabla = soup.find("table", {"id": "cotizaciones"})
         if not tabla:
-            print(f"⚠ No se encontró la tabla en {categoria}, saltando...")
+            print(f"⚠ No se encontró la tabla en {url}")
             continue
 
-        # Extraer las filas de la tabla
-        filas = tabla.find("tbody").find_all("tr")
+        filas = tabla.find("tbody").find_all("tr", recursive=False)
         if not filas:
-            print(f"⚠ No hay datos en {categoria}, saltando...")
+            print(f"⚠ La tabla no tiene filas en {url}")
             continue
 
+        # Nombre de la categoría (Acciones, Cedears, etc.)
+        categoria = endpoint.split("/")[-1].capitalize()
         datos_categoria = []
 
         for fila in filas:
             columnas = fila.find_all("td")
+            if len(columnas) < 10:
+                continue  # Ignorar filas que no tengan las columnas esperadas
 
-            if len(columnas) < 10:  # Si la fila tiene menos columnas de las esperadas, la ignoramos
-                continue
+            # EJEMPLO: "AAPL\r\n        Algo mas"
+            # Vamos a dividir por espacios, y tomar la primera "palabra"
+            # para quedarnos con "AAPL"
+            raw_text = columnas[0].text.strip()
+            # Dividir por espacios
+            partes = raw_text.split()
+            # Quedarnos con la primera parte y normalizar
+            ticker_limpio = partes[0].upper()
 
-            datos = {
-                "ticker": columnas[0].text.strip(),
-                "ultimo_precio": columnas[1].text.strip(),
-                "variacion": columnas[2].text.strip(),
-                "apertura": columnas[7].text.strip(),
-                "minimo": columnas[8].text.strip(),
-                "maximo": columnas[9].text.strip(),
-                "cierre_anterior": columnas[10].text.strip(),
-            }
+            # Extraer el resto de datos como antes:
+            ultimo_precio = columnas[1].text.strip()
+            variacion = columnas[2].text.strip()
+            apertura = columnas[7].text.strip()
+            minimo = columnas[8].text.strip()
+            maximo = columnas[9].text.strip()
+            cierre_anterior = columnas[10].text.strip()
 
-            datos_categoria.append(datos)
+            datos_categoria.append({
+                "ticker": ticker_limpio,
+                "ultimo_precio": ultimo_precio,
+                "variacion": variacion,
+                "apertura": apertura,
+                "minimo": minimo,
+                "maximo": maximo,
+                "cierre_anterior": cierre_anterior,
+            })
 
         resultados[categoria] = datos_categoria
 
     return resultados
-
-# Ejecutar el scraper y mostrar resultados
-if __name__ == "__main__":
-    datos = obtener_datos_iol()
-    for categoria, valores in datos.items():
-        print(f"\n📌 {categoria}: {len(valores)} registros obtenidos")
-        for v in valores[:500]:  # Mostrar solo los primeros 5 por categoría
-            print(v)
