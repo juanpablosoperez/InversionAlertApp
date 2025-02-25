@@ -6,13 +6,33 @@ from modules.scrappers.exportar_iol import exportar_a_excel
 from modules.scrappers.scrap_iol import obtener_datos_iol
 
 
-def parse_float(precio_str: str) -> float:
-    tmp = precio_str.strip()
-    tmp = tmp.replace('.', '').replace(',', '.').replace('$', '').replace('%', '')
-    try:
-        return float(tmp)
-    except ValueError:
-        return 0.0
+import re
+
+def parse_float(value: str) -> float:
+     """
+     Tu versión robusta de parse_float que maneja casos como '6.820.00', '6.570,00', etc.
+     """
+     # 1. Eliminar espacios, símbolo de $, etc. [esta es tu función actual robusta]
+     tmp = value.strip().replace('$', '')
+     tmp = re.sub(r'[^0-9\.,]+', '', tmp)
+     if not tmp:
+         return 0.0
+     if ',' in tmp and '.' in tmp:
+         tmp = tmp.replace('.', '')
+         tmp = tmp.replace(',', '.')
+     elif ',' in tmp and '.' not in tmp:
+         tmp = tmp.replace(',', '.')
+     elif '.' in tmp and ',' not in tmp:
+         parts = tmp.rsplit('.', 1)
+         main = parts[0].replace('.', '')
+         decimals = parts[1]
+         tmp = main + '.' + decimals
+     try:
+         return float(tmp)
+     except ValueError:
+         return 0.0
+
+
 
 def variacion_color(variacion_str: str) -> str:
     if variacion_str.strip().startswith('-'):
@@ -53,21 +73,87 @@ def crear_modal_detalle(page):
     page.overlay.append(modal)
     return modal
 
-def abrir_modal_detalle(page, inversion):
-    """Llena el modal de detalles con los datos de la inversión y lo muestra."""
-    modal = next(m for m in page.overlay if isinstance(m, ft.AlertDialog) and m.title.value == "Detalles de la Inversión")
+def abrir_modal_detalle(page, datos_inv, inv):
+    """Muestra un modal con información detallada del activo."""
+    # Buscamos el modal de detalle que crearemos ahora
+    modal = next(
+        (m for m in page.overlay if isinstance(m, ft.AlertDialog) and m.title.value == "Detalles del Ticker"),
+        None
+    )
 
-    # Actualizar los valores dentro del modal
-    modal.content.controls[1].value = inversion["ticker"]
-    modal.content.controls[3].value = inversion["precio_actual"]
-    modal.content.controls[5].value = inversion["precio_objetivo"]
-    modal.content.controls[7].value = inversion["distancia"]
-    modal.content.controls[9].value = inversion["ultima_actualizacion"]
+    if not modal:
+        # Si no existe, lo creamos
+        modal = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Detalles del Ticker", weight="bold"),
+            content=ft.Column([], spacing=10, width=400),
+            actions=[ft.TextButton("Cerrar", on_click=lambda e: cerrar_modal(e, modal, page))],
+        )
+        page.overlay.append(modal)
 
-    # Abrir el modal
+    # Limpiamos el contenido del modal antes de llenarlo
+    modal.content.controls.clear()
+
+    # Ejemplo: campo "ticker"
+    ticker_text = ft.Text(f"Ticker: {datos_inv['ticker']}", size=16, weight="bold")
+
+    # Ejemplo: precio actual
+    precio_actual = datos_inv.get("ultimo_precio", "N/A")
+    precio_actual_text = ft.Text(f"Precio Actual: {precio_actual}", size=14)
+
+    # Ejemplo: variación
+    variacion = datos_inv.get("variacion", "")
+    variacion_text = ft.Text(f"Variación: {variacion}", size=14)
+
+    # Apertura, mínimo, máximo, cierre anterior (si deseas mostrarlos)
+    apertura = datos_inv.get("apertura", "N/A")
+    minimo = datos_inv.get("minimo", "N/A")
+    maximo = datos_inv.get("maximo", "N/A")
+    cierre_anterior = datos_inv.get("cierre_anterior", "N/A")
+
+    apert_text = ft.Text(f"Apertura: {apertura}", size=14)
+    min_text = ft.Text(f"Mínimo: {minimo}", size=14)
+    max_text = ft.Text(f"Máximo: {maximo}", size=14)
+    cierre_text = ft.Text(f"Cierre Anterior: {cierre_anterior}", size=14)
+
+    # Precio objetivo del usuario
+    precio_objetivo = inv.get("precio_objetivo", "N/A")
+    obj_text = ft.Text(f"Precio Objetivo: {precio_objetivo}", size=14)
+
+    # Diferencia actual vs objetivo
+    # Usamos las mismas funciones auxiliares de parseo si las tienes
+    from math import isnan
+
+    actual_float = parse_float(precio_actual)
+    objetivo_float = parse_float(precio_objetivo)
+    if not isnan(actual_float) and not isnan(objetivo_float):
+        diferencia = actual_float - objetivo_float
+        diff_color = "#EA4335" if diferencia < 0 else "#34A853"
+        dif_text = ft.Text(f"Diferencia: {diferencia:.2f}", size=14, color=diff_color)
+    else:
+        dif_text = ft.Text("Diferencia: N/A", size=14)
+
+    # Agregamos estos textos al modal
+    modal.content.controls.extend([
+        ticker_text,
+        precio_actual_text,
+        variacion_text,
+        apert_text,
+        min_text,
+        max_text,
+        cierre_text,
+        obj_text,
+        dif_text,
+    ])
+
+    # Mostramos el modal
     modal.open = True
     page.update()
 
+def cerrar_modal(e, modal, page):
+    """Cierra el modal."""
+    modal.open = False
+    page.update()
 
 
 def crear_modal(page, agregar_inversion):
@@ -224,7 +310,7 @@ def crear_tarjetas(page):
                                 "Ver detalles",
                                 bgcolor="#34A853",
                                 color="white",
-                                on_click=lambda e, inv=inv: abrir_modal_detalle(page, inv)
+                                on_click=lambda e, datos_inv=datos_inv, inv=inv: abrir_modal_detalle(page, datos_inv, inv)
                             ),
                             ft.IconButton(
                                 icon=ft.Icons.DELETE,
