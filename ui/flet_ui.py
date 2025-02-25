@@ -5,6 +5,21 @@ import datetime
 from modules.scrappers.exportar_iol import exportar_a_excel
 from modules.scrappers.scrap_iol import obtener_datos_iol
 
+
+def parse_float(precio_str: str) -> float:
+    tmp = precio_str.strip()
+    tmp = tmp.replace('.', '').replace(',', '.').replace('$', '').replace('%', '')
+    try:
+        return float(tmp)
+    except ValueError:
+        return 0.0
+
+def variacion_color(variacion_str: str) -> str:
+    if variacion_str.strip().startswith('-'):
+        return "#EA4335"  # rojo
+    return "#34A853"     # verde
+
+
 def crear_modal_detalle(page):
     """Crea un modal vacío que se llenará con los datos de la inversión seleccionada."""
     
@@ -117,31 +132,23 @@ def crear_modal(page, agregar_inversion):
     page.overlay.append(modal)
     return modal
 
-import flet as ft
-from modules.scrappers.scrap_iol import obtener_datos_iol
-
-import flet as ft
-from modules.scrappers.scrap_iol import obtener_datos_iol
 
 def crear_tarjetas(page):
     """Crea y muestra solo las tarjetas de los activos que el usuario sigue."""
     
-    # 🔍 Obtener las inversiones guardadas en client_storage
     inversiones = page.client_storage.get("inversiones") or []
     if not inversiones:
         print("⚠️ No hay inversiones guardadas en client_storage.")
     
-    # 🔍 Obtener los datos scrapeados
     datos_scrapeados = obtener_datos_iol()
     if not datos_scrapeados:
         print("⚠️ No se obtuvieron datos scrapeados.")
         return ft.Column([ft.Text("⚠️ No hay datos disponibles.")]), None
     
-    # 🔍 Normalizar los tickers guardados para evitar problemas de formato
     tickers_seguidos = {inv["ticker"].strip().upper() for inv in inversiones}
     print(f"✅ Tickers seguidos normalizados: {tickers_seguidos}")
 
-    # 🔍 Filtrar solo los datos de los tickers guardados
+    # Filtrar datos
     datos_filtrados = [
         dato for categoria in datos_scrapeados.values() for dato in categoria
         if dato["ticker"].strip().upper() in tickers_seguidos
@@ -149,7 +156,7 @@ def crear_tarjetas(page):
     
     if not datos_filtrados:
         print("⚠️ Ningún ticker guardado tiene datos en el scrapping.")
-    
+
     tarjetas_container = ft.ResponsiveRow()
     search_input = ft.TextField(
         hint_text="Buscar por ticker...",
@@ -158,33 +165,72 @@ def crear_tarjetas(page):
     )
 
     def actualizar_tarjetas(filtro=""):
-        """Filtra y muestra solo las inversiones guardadas con sus datos scrapeados."""
         tarjetas_container.controls.clear()
 
         for inv in inversiones:
-            datos_inv = next((d for d in datos_filtrados if d["ticker"].strip().upper() == inv["ticker"].strip().upper()), None)
+            # Buscar los datos scrapeados
+            datos_inv = next(
+                (d for d in datos_filtrados if d["ticker"].strip().upper() == inv["ticker"].strip().upper()),
+                None
+            )
             if not datos_inv:
-                continue  # Si no hay datos scrapeados, pasar al siguiente
+                continue
 
             if filtro.lower() not in inv["ticker"].lower():
-                continue  # Si no coincide con el filtro, no mostrar
+                continue
 
+            # Calcular el color de la variación
+            color_variacion = variacion_color(datos_inv["variacion"])
+
+            # Calcular la diferencia con parse_float
+            actual = parse_float(datos_inv["ultimo_precio"])
+            objetivo = parse_float(inv["precio_objetivo"])
+            diferencia = actual - objetivo
+
+            if diferencia < 0:
+                color_distancia = "#EA4335"  # rojo
+            else:
+                color_distancia = "#34A853"  # verde
+
+            # Formatear la diferencia como string
+            dist_str = f"{diferencia:.2f}"
+
+            # Construir la tarjeta
             tarjeta = ft.Container(
                 content=ft.Column(
                     [
-                        ft.Row([ft.Text(inv["ticker"], size=16, weight="bold"),
-                                ft.Text(datos_inv["variacion"], color="#34A853")]),
-                        ft.Container(height=10),
-                        ft.Text(f"Precio actual: {datos_inv['ultimo_precio']}", size=14),
-                        ft.Text(f"Precio objetivo: {inv['precio_objetivo']}", size=14),
-                        ft.Text(f"Distancia al objetivo: -", size=14, color="#34A853"),
-                        ft.Text(f"Última actualización: Ahora", size=12, color="gray"),
-                        ft.Container(height=10),
+                        # Título y variación
                         ft.Row([
-                            ft.ElevatedButton("Ver detalles", bgcolor="#34A853", color="white",
-                                              on_click=lambda e, inv=inv: abrir_modal_detalle(page, inv)),
-                            ft.IconButton(icon=ft.Icons.DELETE, tooltip="Eliminar",
-                                          on_click=lambda e, inv=inv: eliminar_inversion(inv)),
+                            ft.Text(inv["ticker"], size=16, weight="bold"),
+                            ft.Text(datos_inv["variacion"], color=color_variacion)
+                        ]),
+                        ft.Container(height=10),
+                        # Precio actual
+                        ft.Text(f"Precio actual: {datos_inv['ultimo_precio']}", size=14),
+                        # Precio objetivo
+                        ft.Text(f"Precio objetivo: {inv['precio_objetivo']}", size=14),
+                        # Distancia al objetivo
+                        ft.Text(
+                            f"Distancia al objetivo: {dist_str}",
+                            size=14,
+                            color=color_distancia
+                        ),
+                        # Última actualización
+                        ft.Text("Última actualización: Ahora", size=12, color="gray"),
+                        ft.Container(height=10),
+                        # Botones de detalle y eliminar
+                        ft.Row([
+                            ft.ElevatedButton(
+                                "Ver detalles",
+                                bgcolor="#34A853",
+                                color="white",
+                                on_click=lambda e, inv=inv: abrir_modal_detalle(page, inv)
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.DELETE,
+                                tooltip="Eliminar",
+                                on_click=lambda e, inv=inv: eliminar_inversion(inv),
+                            ),
                         ]),
                     ],
                     tight=True,
@@ -203,7 +249,6 @@ def crear_tarjetas(page):
         page.update()
 
     def agregar_inversion(ticker, precio_objetivo, frecuencia):
-        """Añade un nuevo ticker a inversiones y actualiza la UI."""
         if any(inv["ticker"] == ticker for inv in inversiones):
             print("⚠️ La inversión ya existe.")
             return
@@ -214,22 +259,24 @@ def crear_tarjetas(page):
             "frecuencia": frecuencia
         }
         inversiones.append(nueva_inversion)
-        page.client_storage.set("inversiones", inversiones)  # Guardar en almacenamiento
-
-        actualizar_tarjetas()  # Recargar las tarjetas con los datos nuevos
+        page.client_storage.set("inversiones", inversiones)
+        actualizar_tarjetas()
 
     def eliminar_inversion(inversion):
-        """Elimina una inversión de la lista y actualiza la UI."""
         inversiones.remove(inversion)
         page.client_storage.set("inversiones", inversiones)
         actualizar_tarjetas()
 
-    actualizar_tarjetas()  # Cargar tarjetas al inicio
+    actualizar_tarjetas()
 
     return ft.Column(
-        [search_input, ft.Container(content=ft.Column([tarjetas_container], scroll=ft.ScrollMode.ALWAYS, height=800))]
+        [
+            search_input,
+            ft.Container(
+                content=ft.Column([tarjetas_container], scroll=ft.ScrollMode.ALWAYS, height=800)
+            )
+        ]
     ), agregar_inversion
-
 
 
 def exportar_excel(page):
@@ -300,11 +347,9 @@ def main(page: ft.Page):
 
     # ✅ Verificar inversiones guardadas
     inversiones_guardadas = page.client_storage.get("inversiones")
-    print("🔍 Inversiones guardadas en client_storage:", inversiones_guardadas)
 
     # ✅ Verificar datos scrapeados
     datos_scrapeados = obtener_datos_iol()
-    print("✅ Datos scrapeados obtenidos:", datos_scrapeados)
 
 
     # En main()
