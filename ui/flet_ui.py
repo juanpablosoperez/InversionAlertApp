@@ -2,6 +2,7 @@ import flet as ft
 import pandas as pd
 from pathlib import Path
 import datetime
+from modules.scrappers.exportar_iol import exportar_a_excel
 
 def crear_modal_detalle(page):
     """Crea un modal vacío que se llenará con los datos de la inversión seleccionada."""
@@ -285,6 +286,16 @@ def main(page: ft.Page):
                             ft.Text(" • 0 alcanzaron objetivo", size=14, color=ft.Colors.BLACK),
                         ], alignment=ft.MainAxisAlignment.CENTER),
                         ft.Row([
+                            ft.ElevatedButton(
+                                "📥 Descargar Data IOL",
+                                bgcolor=ft.Colors.ORANGE_600,
+                                color=ft.Colors.WHITE,
+                                on_click=lambda e: exportar_a_excel(),  # Llama a la función de generación de Excel de IOL
+                                style=ft.ButtonStyle(
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    padding=10,
+                                ),
+                            ),
                             ft.ElevatedButton(
                                 "+ Agregar Inversión",
                                 bgcolor=ft.Colors.GREEN_600,
