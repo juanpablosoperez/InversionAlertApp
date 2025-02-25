@@ -74,81 +74,76 @@ def crear_modal_detalle(page):
     return modal
 
 def abrir_modal_detalle(page, datos_inv, inv):
-    """Muestra un modal con información detallada del activo."""
-    # Buscamos el modal de detalle que crearemos ahora
+    """Muestra un modal con información detallada del activo, con estilo mejorado."""
+
+    # 1. Intentamos encontrar si ya existe un modal con título "Detalles del Ticker"
     modal = next(
-        (m for m in page.overlay if isinstance(m, ft.AlertDialog) and m.title.value == "Detalles del Ticker"),
+        (m for m in page.overlay
+         if isinstance(m, ft.AlertDialog) and m.title.value == "Detalles del Ticker"),
         None
     )
 
+    # 2. Si no existe, lo creamos
     if not modal:
-        # Si no existe, lo creamos
         modal = ft.AlertDialog(
             modal=True,
-            title=ft.Text("Detalles del Ticker", weight="bold"),
-            content=ft.Column([], spacing=10, width=400),
-            actions=[ft.TextButton("Cerrar", on_click=lambda e: cerrar_modal(e, modal, page))],
+            title=ft.Text("Detalles del Ticker", weight="bold", size=18),
+            # Contenedor que envuelve la Column interna, para poder estilizar el fondo, padding, bordes, etc.
+            content=ft.Container(
+                content=ft.Column([], spacing=10),  # Column vacía: la llenaremos más abajo
+                padding=ft.padding.all(20),
+                bgcolor="#FAFAFA",           # Fondo claro
+                border_radius=12,           # Bordes redondeados
+            ),
+            actions=[
+                ft.TextButton(
+                    "Cerrar",
+                    # Llamamos a la función de cerrar
+                    on_click=lambda e: cerrar_modal(e, modal, page),
+                    style=ft.ButtonStyle(
+                        # Botón color gris claro
+                        color="#000000",      # Texto negro
+                        bgcolor="#E5E7EB",    # Fondo gris claro
+                    ),
+                )
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,   # Alinea el botón de acción a la derecha
+            shape=ft.RoundedRectangleBorder(radius=12),   # Borde redondeado del AlertDialog en sí
+            on_dismiss=lambda e: print("Modal cerrado")   # Callback si se cierra el modal
         )
         page.overlay.append(modal)
 
-    # Limpiamos el contenido del modal antes de llenarlo
-    modal.content.controls.clear()
+    # 3. Obtenemos la Column interna para llenarla con los controles
+    contenido_modal = modal.content.content
+    contenido_modal.controls.clear()  # Limpiamos por si ya había algo
 
-    # Ejemplo: campo "ticker"
-    ticker_text = ft.Text(f"Ticker: {datos_inv['ticker']}", size=16, weight="bold")
-
-    # Ejemplo: precio actual
+    # 4. Extraer los datos que quieres mostrar
     precio_actual = datos_inv.get("ultimo_precio", "N/A")
-    precio_actual_text = ft.Text(f"Precio Actual: {precio_actual}", size=14)
-
-    # Ejemplo: variación
-    variacion = datos_inv.get("variacion", "")
-    variacion_text = ft.Text(f"Variación: {variacion}", size=14)
-
-    # Apertura, mínimo, máximo, cierre anterior (si deseas mostrarlos)
+    variacion = datos_inv.get("variacion", "N/A")
     apertura = datos_inv.get("apertura", "N/A")
     minimo = datos_inv.get("minimo", "N/A")
     maximo = datos_inv.get("maximo", "N/A")
     cierre_anterior = datos_inv.get("cierre_anterior", "N/A")
-
-    apert_text = ft.Text(f"Apertura: {apertura}", size=14)
-    min_text = ft.Text(f"Mínimo: {minimo}", size=14)
-    max_text = ft.Text(f"Máximo: {maximo}", size=14)
-    cierre_text = ft.Text(f"Cierre Anterior: {cierre_anterior}", size=14)
-
-    # Precio objetivo del usuario
     precio_objetivo = inv.get("precio_objetivo", "N/A")
-    obj_text = ft.Text(f"Precio Objetivo: {precio_objetivo}", size=14)
 
-    # Diferencia actual vs objetivo
-    # Usamos las mismas funciones auxiliares de parseo si las tienes
-    from math import isnan
-
-    actual_float = parse_float(precio_actual)
-    objetivo_float = parse_float(precio_objetivo)
-    if not isnan(actual_float) and not isnan(objetivo_float):
-        diferencia = actual_float - objetivo_float
-        diff_color = "#EA4335" if diferencia < 0 else "#34A853"
-        dif_text = ft.Text(f"Diferencia: {diferencia:.2f}", size=14, color=diff_color)
-    else:
-        dif_text = ft.Text("Diferencia: N/A", size=14)
-
-    # Agregamos estos textos al modal
-    modal.content.controls.extend([
-        ticker_text,
-        precio_actual_text,
-        variacion_text,
-        apert_text,
-        min_text,
-        max_text,
-        cierre_text,
-        obj_text,
-        dif_text,
+    # 5. Crear los controles de texto con la información
+    contenido_modal.controls.extend([
+        ft.Text(f"Ticker: {datos_inv['ticker']}", size=16, weight="bold"),
+        ft.Text(f"Precio Actual: {precio_actual}", size=14),
+        ft.Text(f"Variación: {variacion}", size=14),
+        ft.Text(f"Apertura: {apertura}", size=14),
+        ft.Text(f"Mínimo: {minimo}", size=14),
+        ft.Text(f"Máximo: {maximo}", size=14),
+        ft.Text(f"Cierre Anterior: {cierre_anterior}", size=14),
+        ft.Text(f"Precio Objetivo: {precio_objetivo}", size=14),
+        # Aquí podrías agregar más controles si lo deseas,
+        # por ejemplo: distancia actual vs objetivo, etc.
     ])
 
-    # Mostramos el modal
+    # 6. Mostramos el modal
     modal.open = True
     page.update()
+
 
 def cerrar_modal(e, modal, page):
     """Cierra el modal."""
