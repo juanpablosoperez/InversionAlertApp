@@ -165,7 +165,8 @@ def crear_modal(page, agregar_inversion):
         ],
         hint_text="Seleccionar frecuencia",
         bgcolor="white",
-        item_height=30
+        item_height=48.0
+
     )
 
     def limpiar_campos_modal():
