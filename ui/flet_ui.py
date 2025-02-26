@@ -4,6 +4,7 @@ from pathlib import Path
 import datetime
 from modules.scrappers.exportar_iol import exportar_a_excel
 from modules.scrappers.scrap_iol import obtener_datos_iol
+from modules.notifier import enviar_notificacion 
 
 
 import re
@@ -248,6 +249,9 @@ def crear_tarjetas(page):
     def actualizar_tarjetas(filtro=""):
         tarjetas_container.controls.clear()
 
+        # Recuperar la lista de tickers que ya han recibido notificación
+        tickers_notificados = set(page.client_storage.get("tickers_notificados") or [])
+
         for inv in inversiones:
             # Buscar los datos scrapeados
             datos_inv = next(
@@ -261,19 +265,30 @@ def crear_tarjetas(page):
                 continue
 
             # Calcular el color de la variación
-            color_variacion = variacion_color(datos_inv["variacion"])
+            color_variacion = variacion_color(datos_inv.get("variacion", "0.00%"))
 
             # Calcular la diferencia con parse_float
             actual = parse_float(datos_inv["ultimo_precio"])
             objetivo = parse_float(inv["precio_objetivo"])
             diferencia = actual - objetivo
 
-            if diferencia < 0:
-                color_distancia = "#EA4335"  # rojo
-            else:
-                color_distancia = "#34A853"  # verde
+            # 📌 Imprimir valores antes de enviar notificación
+            print(f"📊 Ticker: {inv['ticker']} - Actual: {actual} - Objetivo: {objetivo}")
+            print(f"🔍 Ya notificado? {'Sí' if inv['ticker'] in tickers_notificados else 'No'}")
 
-            # Formatear la diferencia como string
+            # ✅ Condición correcta
+            if actual <= objetivo and inv["ticker"] not in tickers_notificados:
+                print(f"🚀 Enviando notificación para {inv['ticker']}...")  # 📌 Mensaje de prueba
+                enviar_notificacion(inv["ticker"], actual, objetivo)
+                tickers_notificados.add(inv["ticker"])
+                page.client_storage.set("tickers_notificados", list(tickers_notificados))  # Guardar como lista
+                print(f"✅ Notificación enviada para {inv['ticker']}")
+
+            else:
+                print(f"❌ No se envió notificación para {inv['ticker']}")
+
+            # Definir color según la distancia al objetivo
+            color_distancia = "#34A853" if diferencia >= 0 else "#EA4335"
             dist_str = f"{diferencia:.2f}"
 
             # Construir la tarjeta
@@ -328,6 +343,7 @@ def crear_tarjetas(page):
             )
 
         page.update()
+
 
     def agregar_inversion(ticker, precio_objetivo, frecuencia):
         if any(inv["ticker"] == ticker for inv in inversiones):
@@ -425,6 +441,9 @@ def main(page: ft.Page):
     page.title = "Inversion Alert"
     page.bgcolor = ft.Colors.WHITE
     page.theme_mode = "light"
+
+    # ✅ Limpiar los tickers notificados al iniciar la app (prueba para ver si soluciona el problema)
+    page.client_storage.remove("tickers_notificados")
 
     # ✅ Verificar inversiones guardadas
     inversiones_guardadas = page.client_storage.get("inversiones")
