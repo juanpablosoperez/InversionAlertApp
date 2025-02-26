@@ -4,6 +4,7 @@ from pathlib import Path
 import datetime
 from modules.scrappers.exportar_iol import exportar_a_excel
 from modules.scrappers.scrap_iol import obtener_datos_iol
+from modules.notifier import enviar_notificacion 
 
 
 import re
@@ -164,7 +165,8 @@ def crear_modal(page, agregar_inversion):
         ],
         hint_text="Seleccionar frecuencia",
         bgcolor="white",
-        item_height=30
+        item_height=48.0
+
     )
 
     def limpiar_campos_modal():
@@ -248,6 +250,21 @@ def crear_tarjetas(page):
     def actualizar_tarjetas(filtro=""):
         tarjetas_container.controls.clear()
 
+        # ✅ Obtener la fecha actual
+        fecha_hoy = datetime.datetime.now().date()
+        
+        # ✅ Revisar si hay una fecha guardada en `client_storage`
+        ultima_fecha = page.client_storage.get("ultima_fecha")
+        
+        # ✅ Si es un nuevo día, reseteamos los tickers notificados
+        if ultima_fecha != str(fecha_hoy):
+            print("🌅 Nuevo día detectado, limpiando tickers notificados...")
+            page.client_storage.set("tickers_notificados", [])
+            page.client_storage.set("ultima_fecha", str(fecha_hoy))
+
+        # ✅ Obtener tickers ya notificados
+        tickers_notificados = set(page.client_storage.get("tickers_notificados") or [])
+
         for inv in inversiones:
             # Buscar los datos scrapeados
             datos_inv = next(
@@ -260,58 +277,56 @@ def crear_tarjetas(page):
             if filtro.lower() not in inv["ticker"].lower():
                 continue
 
-            # Calcular el color de la variación
-            color_variacion = variacion_color(datos_inv["variacion"])
+            # ✅ Calcular el color de la variación
+            color_variacion = variacion_color(datos_inv.get("variacion", "0.00%"))
 
-            # Calcular la diferencia con parse_float
+            # ✅ Calcular la diferencia con `parse_float`
             actual = parse_float(datos_inv["ultimo_precio"])
             objetivo = parse_float(inv["precio_objetivo"])
             diferencia = actual - objetivo
 
-            if diferencia < 0:
-                color_distancia = "#EA4335"  # rojo
-            else:
-                color_distancia = "#34A853"  # verde
+            # 📌 Imprimir valores antes de enviar notificación
+            print(f"📊 Ticker: {inv['ticker']} - Actual: {actual} - Objetivo: {objetivo}")
+            print(f"🔍 Ya notificado? {'Sí' if inv['ticker'] in tickers_notificados else 'No'}")
 
-            # Formatear la diferencia como string
+            # ✅ Si el precio sube por encima del objetivo, eliminar de notificados
+            if inv["ticker"] in tickers_notificados and actual > objetivo:
+                print(f"🔄 {inv['ticker']} subió sobre el objetivo. Eliminando de notificados.")
+                tickers_notificados.remove(inv["ticker"])
+                page.client_storage.set("tickers_notificados", list(tickers_notificados))
+
+            # ✅ Enviar notificación solo si el precio actual es menor o igual al objetivo y aún no se notificó
+            if actual <= objetivo and inv["ticker"] not in tickers_notificados:
+                print(f"🚀 Enviando notificación para {inv['ticker']}...") 
+                enviar_notificacion(inv["ticker"], actual, objetivo)
+                tickers_notificados.add(inv["ticker"])
+                page.client_storage.set("tickers_notificados", list(tickers_notificados))
+                print(f"✅ Notificación enviada para {inv['ticker']}")
+
+            else:
+                print(f"❌ No se envió notificación para {inv['ticker']}")
+
+            # ✅ Configurar colores
+            color_distancia = "#34A853" if diferencia >= 0 else "#EA4335"
             dist_str = f"{diferencia:.2f}"
 
-            # Construir la tarjeta
+            # ✅ Crear tarjeta
             tarjeta = ft.Container(
                 content=ft.Column(
                     [
-                        # Título y variación
-                        ft.Row([
-                            ft.Text(inv["ticker"], size=16, weight="bold"),
-                            ft.Text(datos_inv["variacion"], color=color_variacion)
-                        ]),
+                        ft.Row([ft.Text(inv["ticker"], size=16, weight="bold"),
+                                ft.Text(datos_inv["variacion"], color=color_variacion)]),
                         ft.Container(height=10),
-                        # Precio actual
                         ft.Text(f"Precio actual: {datos_inv['ultimo_precio']}", size=14),
-                        # Precio objetivo
                         ft.Text(f"Precio objetivo: {inv['precio_objetivo']}", size=14),
-                        # Distancia al objetivo
-                        ft.Text(
-                            f"Distancia al objetivo: {dist_str}",
-                            size=14,
-                            color=color_distancia
-                        ),
-                        # Última actualización
+                        ft.Text(f"Distancia al objetivo: {dist_str}", size=14, color=color_distancia),
                         ft.Text("Última actualización: Ahora", size=12, color="gray"),
                         ft.Container(height=10),
-                        # Botones de detalle y eliminar
                         ft.Row([
-                            ft.ElevatedButton(
-                                "Ver detalles",
-                                bgcolor="#34A853",
-                                color="white",
-                                on_click=lambda e, datos_inv=datos_inv, inv=inv: abrir_modal_detalle(page, datos_inv, inv)
-                            ),
-                            ft.IconButton(
-                                icon=ft.Icons.DELETE,
-                                tooltip="Eliminar",
-                                on_click=lambda e, inv=inv: eliminar_inversion(inv),
-                            ),
+                            ft.ElevatedButton("Ver detalles", bgcolor="#34A853", color="white",
+                                            on_click=lambda e, datos_inv=datos_inv, inv=inv: abrir_modal_detalle(page, datos_inv, inv)),
+                            ft.IconButton(icon=ft.Icons.DELETE, tooltip="Eliminar",
+                                        on_click=lambda e, inv=inv: eliminar_inversion(inv)),
                         ]),
                     ],
                     tight=True,
@@ -328,6 +343,8 @@ def crear_tarjetas(page):
             )
 
         page.update()
+
+
 
     def agregar_inversion(ticker, precio_objetivo, frecuencia):
         if any(inv["ticker"] == ticker for inv in inversiones):
@@ -425,6 +442,9 @@ def main(page: ft.Page):
     page.title = "Inversion Alert"
     page.bgcolor = ft.Colors.WHITE
     page.theme_mode = "light"
+
+    # ✅ Limpiar los tickers notificados al iniciar la app (prueba para ver si soluciona el problema)
+    page.client_storage.remove("tickers_notificados")
 
     # ✅ Verificar inversiones guardadas
     inversiones_guardadas = page.client_storage.get("inversiones")
